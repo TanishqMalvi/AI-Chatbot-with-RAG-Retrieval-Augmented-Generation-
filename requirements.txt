@@ -1,0 +1,55 @@
+# Core framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+
+# LangChain ecosystem
+langchain>=0.3.13
+langchain-openai>=0.3.1
+langchain-anthropic>=0.3.3
+langchain-community>=0.3.13
+langchain-chroma>=0.2.0
+langsmith>=0.2.11
+
+# Vector DB
+chromadb>=0.6.3
+pinecone-client>=5.0.1
+
+# Embeddings & Reranking
+openai>=1.59.7
+sentence-transformers>=3.3.1
+
+# Document processing
+pdfplumber==0.11.4
+python-multipart==0.0.22
+markdown==3.7
+
+# Redis caching
+redis==5.2.1
+
+# Auth
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# PII detection & guardrails
+presidio-analyzer>=2.2.355
+presidio-anonymizer>=2.2.355
+spacy>=3.8.0
+
+# HTTP client
+httpx>=0.28.1
+
+# Observability
+opentelemetry-sdk>=1.29.0
+opentelemetry-instrumentation-fastapi>=0.50b0
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+
+# Dev utilities
+python-dotenv==1.0.1
+structlog>=24.4.0
+ruff==0.8.6
