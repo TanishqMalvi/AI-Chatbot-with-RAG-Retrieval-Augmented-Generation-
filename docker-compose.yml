@@ -1,0 +1,72 @@
+version: "3.9"
+
+# ============================================================
+# HealthTech RAG Assistant – docker-compose (development)
+# ============================================================
+# Usage:
+#   cp .env.example .env   # then fill in API keys
+#   docker-compose up --build
+#
+# Switch to Pinecone:
+#   VECTOR_DB=pinecone docker-compose up
+# ============================================================
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: healthtech-rag-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_PERSIST_DIR=/app/chroma_db
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ./data:/app/data:ro
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: healthtech-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Optional: Chroma standalone server (for multi-instance deployments)
+  # chroma:
+  #   image: chromadb/chroma:latest
+  #   container_name: healthtech-chroma
+  #   ports:
+  #     - "8001:8000"
+  #   volumes:
+  #     - chroma_data:/chroma/chroma
+  #   environment:
+  #     - IS_PERSISTENT=TRUE
+  #     - ALLOW_RESET=FALSE
+  #   restart: unless-stopped
+
+volumes:
+  redis_data:
+  # chroma_data:
