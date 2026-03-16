@@ -20,10 +20,12 @@
 4. [API Reference](#api-reference)
 5. [Document Ingestion](#document-ingestion)
 6. [Security & Compliance](#security--compliance)
-7. [Evaluation](#evaluation)
-8. [Production Deployment](#production-deployment)
-9. [Blueprint Compliance](#blueprint-compliance)
-10. [Future: Agentic Extension](#future-agentic-extension)
+7. [Running Tests](#running-tests)
+8. [Evaluation](#evaluation)
+9. [Production Deployment](#production-deployment)
+10. [Troubleshooting](#troubleshooting)
+11. [Blueprint Compliance](#blueprint-compliance)
+12. [Future: Agentic Extension](#future-agentic-extension)
 
 ---
 
@@ -157,19 +159,38 @@ curl -s -X POST http://localhost:8000/api/v1/chat \
 
 ### 6. Local development (without Docker)
 
+**Prerequisites:** Python 3.11+, a running Redis instance (or disable caching), and an OpenAI API key.
+
 ```bash
-python -m venv .venv && source .venv/bin/activate
+# 1. Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+
+# 2. Install Python dependencies
 pip install -r requirements.txt
 
-# Download spaCy model for Presidio
+# 3. Download the spaCy NLP model (required for PII redaction via Presidio)
 python -m spacy download en_core_web_lg
 
-# Run tests
+# 4. Configure environment variables
+cp .env.example .env
+# Edit .env and set at minimum:
+#   OPENAI_API_KEY=sk-...
+#   JWT_SECRET_KEY=<random-256-bit-string>
+
+# 5. Start Redis (required for caching)
+#    Option A – via Docker:
+docker run -d --name redis -p 6379:6379 redis:7.2-alpine
+#    Option B – native install (macOS): brew install redis && redis-server
+
+# 6. Run tests to verify setup
 pytest tests/ -v
 
-# Start the API
+# 7. Start the API server
 uvicorn app.main:app --reload --port 8000
 ```
+
+The API will be available at **http://localhost:8000** with interactive docs at **http://localhost:8000/docs**.
 
 ---
 
@@ -306,6 +327,39 @@ ensuring unauthorized chunks never reach the LLM context window.
 
 ---
 
+## Running Tests
+
+The project uses **pytest** with async support. Tests mock external services (OpenAI, vector DB) so they run without API keys.
+
+```bash
+# Run the full test suite
+pytest tests/ -v
+
+# Run a specific test file
+pytest tests/test_api.py -v
+pytest tests/test_guardrails.py -v
+pytest tests/test_ingestion.py -v
+pytest tests/test_retrieval.py -v
+
+# Run with coverage report
+pytest tests/ --cov=app --cov-report=term-missing
+
+# Run a single test by name
+pytest tests/test_api.py::test_health_check -v
+```
+
+### Linting
+
+```bash
+# Lint with ruff (configured in pyproject.toml)
+ruff check app/ tests/
+
+# Auto-fix lint issues
+ruff check --fix app/ tests/
+```
+
+---
+
 ## Evaluation
 
 ### Running the offline evaluator
@@ -359,6 +413,45 @@ kubectl apply -f k8s/service.yaml
 - **Synthetic queries:** Use `eval/evaluator.py` with generated QA pairs for continuous eval.
 - **Dashboard:** Expose Prometheus metrics at `/metrics`; build Grafana SLO dashboard.
 - **Horizontal scaling:** Chroma → Pinecone serverless removes vector DB as scaling bottleneck.
+
+---
+
+## Troubleshooting
+
+### `OPENAI_API_KEY is not set` warning
+
+The app requires a valid OpenAI API key for embeddings and generation. Make sure your `.env`
+file includes `OPENAI_API_KEY=sk-...` or export it in your shell before starting the server.
+
+### Redis connection refused
+
+The API expects Redis for caching. If Redis is not running you will see connection errors at
+startup. Either start Redis (`docker run -d -p 6379:6379 redis:7.2-alpine`) or, for quick
+local testing, set `REDIS_URL=` to an empty value in `.env` (caching will be disabled).
+
+### spaCy model not found (`en_core_web_lg`)
+
+Presidio PII redaction requires the `en_core_web_lg` spaCy model. Install it with:
+
+```bash
+python -m spacy download en_core_web_lg
+```
+
+If you do not need PII redaction during development, set `ENABLE_PII_REDACTION=false` in `.env`.
+
+### `docker-compose up` fails to build
+
+Ensure Docker and docker-compose are installed and that the Docker daemon is running.
+On Linux you may need to run `docker compose` (v2 syntax) instead of `docker-compose`.
+
+### Tests fail with import errors
+
+Make sure you installed all dependencies inside the virtual environment:
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 ---
 
