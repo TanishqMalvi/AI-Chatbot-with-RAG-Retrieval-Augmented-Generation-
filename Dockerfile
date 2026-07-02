@@ -16,6 +16,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
+# Pre-download HuggingFace embedding model
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer(\"sentence-transformers/all-MiniLM-L6-v2\")"
+RUN python -c "from sentence_transformers import CrossEncoder; CrossEncoder(\"BAAI/bge-reranker-large\")"
+
+# Download spaCy model at build time (avoid runtime download)
+RUN python -m spacy download en_core_web_lg
+
 # Copy application code
 COPY app/ ./app/
 COPY data/ ./data/
@@ -23,7 +30,7 @@ COPY eval/ ./eval/
 COPY pyproject.toml .
 
 # Set ownership
-RUN chown -R appuser:appuser /app
+RUN mkdir -p /home/appuser/.cache/huggingface && chown -R appuser:appuser /app /home/appuser
 
 USER appuser
 
@@ -34,4 +41,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

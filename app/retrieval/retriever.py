@@ -1,7 +1,7 @@
 """
 Retrieval module: vector search + cross-encoder reranking.
 
-Blueprint §6-7:
+Blueprint Â§6-7:
 - Retrieve k=20 candidates via cosine similarity.
 - Apply row-level ACL filter BEFORE retrieval.
 - Rerank to top 5-8 with bge-reranker-large.
@@ -10,6 +10,7 @@ Blueprint §6-7:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 import structlog
@@ -33,27 +34,24 @@ class RetrievedChunk:
 def _build_acl_filter(user_roles: list[str]) -> dict[str, Any] | None:
     """
     Build a Chroma metadata filter that enforces row-level access control.
-
-    Blueprint §9: Row-level security via metadata filtering BEFORE retrieval.
     A document is accessible if any of the user's roles appears in access_tags.
     The special tag "all-employees" grants access to everyone.
-
-    For Chroma the filter uses the $or / $contains operators.
-    For Pinecone the filter syntax is slightly different – adapt as needed.
     """
-    # We store access_tags as a comma-separated string in Chroma.
-    # Build an $or filter checking for each role + the universal tag.
     tags_to_check = list(set(user_roles + ["all-employees"]))
+    if len(tags_to_check) <= 1:
+        return {"access_tags": {"$in": tags_to_check}}
+    # Build $or filter for each tag to enable row-level ACL filtering
+    or_clauses = [{"access_tags": {"$in": [tag]}} for tag in tags_to_check]
+    return {"$or": or_clauses}
 
-    if len(tags_to_check) == 1:
-        return {"access_tags": {"$contains": tags_to_check[0]}}
 
-    return {
-        "$or": [
-            {"access_tags": {"$contains": tag}}
-            for tag in tags_to_check
-        ]
-    }
+@lru_cache(maxsize=1)
+def _get_cross_encoder():
+    """Load the cross-encoder reranker once and reuse it across requests."""
+    from sentence_transformers import CrossEncoder  # type: ignore
+
+    logger.info("loading_reranker_model", model=settings.reranker_model)
+    return CrossEncoder(settings.reranker_model)
 
 
 def _docs_to_chunks(docs: list[Document], scores: list[float] | None = None) -> list[RetrievedChunk]:
@@ -106,7 +104,7 @@ def retrieve(
             RetrievedChunk(
                 chunk_id=meta.get("chunk_id", ""),
                 chunk_text=doc.page_content,
-                score=float(score),
+                score=score,
                 metadata=meta,
             )
         )
@@ -122,7 +120,7 @@ def rerank(
     """
     Rerank retrieved chunks using a cross-encoder model.
 
-    Blueprint §7: bge-reranker-large cross-encoder.
+    Blueprint Â§7: bge-reranker-large cross-encoder.
     Falls back to score-sorted ordering if the model is unavailable.
     """
     n = top_n or settings.rerank_top_n
@@ -130,10 +128,8 @@ def rerank(
         return []
 
     try:
-        from sentence_transformers import CrossEncoder  # type: ignore
-
         logger.info("reranking", model=settings.reranker_model, candidates=len(chunks))
-        cross_encoder = CrossEncoder(settings.reranker_model)
+        cross_encoder = _get_cross_encoder()
         pairs = [(query, c.chunk_text) for c in chunks]
         scores = cross_encoder.predict(pairs).tolist()
 
@@ -154,7 +150,6 @@ def rerank(
             error=str(exc),
             fallback="score_sort",
         )
-        # Fallback: sort by original similarity score
         return sorted(chunks, key=lambda c: c.score, reverse=True)[:n]
 
 
@@ -164,6 +159,6 @@ def retrieve_and_rerank(
     top_k: int | None = None,
     top_n: int | None = None,
 ) -> list[RetrievedChunk]:
-    """Full retrieval pipeline: vector search → ACL filter → rerank."""
+    """Full retrieval pipeline: vector search â†’ ACL filter â†’ rerank."""
     candidates = retrieve(query, user_roles, top_k=top_k)
     return rerank(query, candidates, top_n=top_n)

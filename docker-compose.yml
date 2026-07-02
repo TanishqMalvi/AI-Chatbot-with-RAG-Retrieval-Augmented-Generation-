@@ -7,9 +7,7 @@
 #
 # Switch to Pinecone:
 #   VECTOR_DB=pinecone docker-compose up
-# ============================================================
-
-services:
+# ============================================================services:
   api:
     build:
       context: .
@@ -22,6 +20,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - CHROMA_PERSIST_DIR=/app/chroma_db
+      - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
       - ./chroma_db:/app/chroma_db
       - ./data:/app/data:ro
@@ -29,6 +28,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      ollama:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -52,19 +53,15 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Optional: Chroma standalone server (for multi-instance deployments)
-  # chroma:
-  #   image: chromadb/chroma:latest
-  #   container_name: healthtech-chroma
-  #   ports:
-  #     - "8001:8000"
-  #   volumes:
-  #     - chroma_data:/chroma/chroma
-  #   environment:
-  #     - IS_PERSISTENT=TRUE
-  #     - ALLOW_RESET=FALSE
-  #   restart: unless-stopped
+  ollama:
+    image: ollama/ollama:latest
+    container_name: healthtech-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
 
 volumes:
   redis_data:
-  # chroma_data:
+  ollama_data:

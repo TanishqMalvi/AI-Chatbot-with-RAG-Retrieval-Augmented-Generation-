@@ -186,7 +186,7 @@ async def chat(
     llm = get_llm()
     try:
         ai_message = await llm.ainvoke(messages)
-        raw_answer = ai_message.content
+        raw_answer = ai_message.content if isinstance(ai_message.content, str) else str(ai_message.content)
     except Exception as exc:
         logger.error("llm_generation_failed", error=str(exc))
         raise HTTPException(
@@ -214,9 +214,9 @@ async def chat(
 
     sources = [
         SourceChunk(
-            doc_id=c.metadata.get("doc_id", ""),
-            filename=c.metadata.get("filename", c.metadata.get("doc_id", "")),
-            section=c.metadata.get("section", ""),
+            doc_id=str(c.metadata.get("doc_id") or ""),
+            filename=str(c.metadata.get("filename") or c.metadata.get("doc_id") or ""),
+            section=str(c.metadata.get("section") or ""),
             score=round(c.score, 4),
         )
         for c in chunks

@@ -27,13 +27,17 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str = Field(default="", description="OpenAI API key")
-    openai_embedding_model: str = "text-embedding-3-large"
+    openai_embedding_model: str = "text-embedding-ada-002"
     openai_chat_model: str = "gpt-4o-mini"
 
     # LLM Provider
-    llm_provider: Literal["openai", "anthropic"] = "openai"
+    llm_provider: Literal["openai", "anthropic", "ollama"] = "ollama"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-3-5-sonnet-20241022"
+
+    # Ollama (free, local)
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2"
 
     # Vector DB
     vector_db: Literal["chroma", "pinecone"] = "chroma"
@@ -52,9 +56,9 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60
 
     # Retrieval
-    retrieval_top_k: int = 20
-    rerank_top_n: int = 6
-    max_context_chunks: int = 6
+    retrieval_top_k: int = 10
+    rerank_top_n: int = 4
+    max_context_chunks: int = 4
     reranker_model: str = "BAAI/bge-reranker-large"
 
     # Guardrails
