@@ -34,8 +34,9 @@ def get_embedder() -> EmbedderProtocol:
     - openai (default): Uses OpenAI text-embedding model. Requires OPENAI_API_KEY.
     - ollama: Uses Ollama nomic-embed-text locally. Requires Ollama running.
       Run: ollama pull nomic-embed-text
+    - gemini: Uses Google GenerativeAI embeddings. Requires GEMINI_API_KEY.
     """
-    provider = settings.llm_provider
+    provider = settings.embedding_provider
 
     if provider == "ollama":
         from langchain_ollama import OllamaEmbeddings
@@ -44,6 +45,26 @@ def get_embedder() -> EmbedderProtocol:
         model = "nomic-embed-text"
         logger.info("loading_embedder", provider="ollama", model=model, base_url=ollama_url)
         return OllamaEmbeddings(model=model, base_url=ollama_url)
+
+    if provider == "gemini":
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+        model = settings.gemini_embedding_model
+        logger.info("loading_embedder", provider="gemini", model=model)
+        return GoogleGenerativeAIEmbeddings(
+            model=model,
+            google_api_key=settings.gemini_api_key,
+        )
+
+    if provider == "huggingface":
+        from langchain_huggingface import HuggingFaceInferenceAPIEmbeddings
+
+        model = settings.huggingface_embedding_model
+        logger.info("loading_embedder", provider="huggingface", model=model)
+        return HuggingFaceInferenceAPIEmbeddings(
+            model_name=model,
+            api_key=settings.huggingface_api_key,
+        )
 
     # Default: OpenAI embeddings
     from langchain_openai import OpenAIEmbeddings

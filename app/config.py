@@ -30,14 +30,29 @@ class Settings(BaseSettings):
     openai_embedding_model: str = "text-embedding-ada-002"
     openai_chat_model: str = "gpt-4o-mini"
 
-    # LLM Provider
-    llm_provider: Literal["openai", "anthropic", "ollama"] = "openai"
+    # LLM Provider (chat generation only)
+    llm_provider: Literal["openai", "anthropic", "ollama", "gemini", "openrouter"] = "openai"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-3-5-sonnet-20241022"
 
     # Ollama (free, local)
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
+
+    # Google Gemini (free tier, no billing setup required)
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-1.5-flash"
+    gemini_embedding_model: str = "models/text-embedding-004"
+
+    # OpenRouter (OpenAI-compatible, free models available)
+    openrouter_api_key: str = ""
+    openrouter_model: str = "meta-llama/llama-3.1-8b-instruct:free"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
+    # Embedding provider (separate from chat llm_provider — defaults to HuggingFace free tier)
+    embedding_provider: Literal["openai", "ollama", "huggingface"] = "huggingface"
+    huggingface_api_key: str = ""
+    huggingface_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     # Vector DB
     vector_db: Literal["chroma", "pinecone"] = "chroma"
