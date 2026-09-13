@@ -46,7 +46,7 @@ class Settings(BaseSettings):
 
     # OpenRouter (OpenAI-compatible, free models available)
     openrouter_api_key: str = ""
-    openrouter_model: str = "meta-llama/llama-3.1-8b-instruct:free"
+    openrouter_model: str = "openrouter/free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Embedding provider (separate from chat llm_provider — defaults to HuggingFace free tier)

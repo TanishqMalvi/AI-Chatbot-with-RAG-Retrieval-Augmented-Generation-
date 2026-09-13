@@ -1,8 +1,8 @@
 """
 Embedding module.
 
-Uses Ollama nomic-embed-text for local, free embeddings.
-No API key required - runs entirely on-device via Ollama.
+Supports OpenAI, Ollama, and Hugging Face Inference API embeddings.
+The embedding provider is configured independently from chat generation.
 """
 
 from __future__ import annotations
@@ -31,10 +31,10 @@ def get_embedder() -> EmbedderProtocol:
     """
     Return a cached embedder instance.
 
-    - openai (default): Uses OpenAI text-embedding model. Requires OPENAI_API_KEY.
+    - openai: Uses OpenAI text-embedding model. Requires OPENAI_API_KEY.
     - ollama: Uses Ollama nomic-embed-text locally. Requires Ollama running.
       Run: ollama pull nomic-embed-text
-    - gemini: Uses Google GenerativeAI embeddings. Requires GEMINI_API_KEY.
+    - huggingface: Uses Hugging Face Inference API embeddings. Requires HUGGINGFACE_API_KEY.
     """
     provider = settings.embedding_provider
 
@@ -46,24 +46,15 @@ def get_embedder() -> EmbedderProtocol:
         logger.info("loading_embedder", provider="ollama", model=model, base_url=ollama_url)
         return OllamaEmbeddings(model=model, base_url=ollama_url)
 
-    if provider == "gemini":
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-        model = settings.gemini_embedding_model
-        logger.info("loading_embedder", provider="gemini", model=model)
-        return GoogleGenerativeAIEmbeddings(
-            model=model,
-            google_api_key=settings.gemini_api_key,
-        )
-
     if provider == "huggingface":
-        from langchain_huggingface import HuggingFaceInferenceAPIEmbeddings
+        from langchain_huggingface import HuggingFaceEndpointEmbeddings
 
         model = settings.huggingface_embedding_model
         logger.info("loading_embedder", provider="huggingface", model=model)
-        return HuggingFaceInferenceAPIEmbeddings(
-            model_name=model,
-            api_key=settings.huggingface_api_key,
+        return HuggingFaceEndpointEmbeddings(
+            model=model,
+            task="feature-extraction",
+            huggingfacehub_api_token=settings.huggingface_api_key,
         )
 
     # Default: OpenAI embeddings

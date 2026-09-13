@@ -1,6 +1,6 @@
 """
 LLM factory.
-Providers: openai | anthropic | ollama (free, local)
+Providers: openai | anthropic | ollama | gemini | openrouter
 """
 
 from __future__ import annotations
