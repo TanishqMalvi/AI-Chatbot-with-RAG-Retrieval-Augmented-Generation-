@@ -22,10 +22,11 @@
 6. [Security & Compliance](#security--compliance)
 7. [Running Tests](#running-tests)
 8. [Evaluation](#evaluation)
-9. [Production Deployment](#production-deployment)
-10. [Troubleshooting](#troubleshooting)
-11. [Blueprint Compliance](#blueprint-compliance)
-12. [Future: Agentic Extension](#future-agentic-extension)
+9. [Deploying to production](#deploying-to-production)
+10. [Production Deployment](#production-deployment)
+11. [Troubleshooting](#troubleshooting)
+12. [Blueprint Compliance](#blueprint-compliance)
+13. [Future: Agentic Extension](#future-agentic-extension)
 
 ---
 
@@ -392,6 +393,56 @@ python -m eval.evaluator \
 - Compliance / PHI handling
 - Engineering guidelines
 - Adversarial / out-of-scope queries
+
+---
+
+## Deploying to production
+
+For cloud deployments (Render, Railway, etc.), use `docker-compose.prod.yml`.
+**Do not use the dev `docker-compose.yml` in production** — it spins up an
+Ollama container that has no model pulled and wastes resources.
+
+```bash
+# 1. Copy the production env file
+cp .env.example .env
+
+# 2. Fill in the required secrets
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-...          # or set ANTHROPIC_API_KEY + LLM_PROVIDER=anthropic
+JWT_SECRET_KEY=<random-256-bit-string>
+CONFIDENCE_THRESHOLD=0.35
+
+# 3. Deploy with the production compose file
+docker-compose -f docker-compose.prod.yml up --build
+```
+
+### Required environment variables
+
+| Variable | Required | Notes |
+|---------|----------|-------|
+| `LLM_PROVIDER` | ✅ | `openai` (default) or `anthropic` |
+| `OPENAI_API_KEY` | ✅ (if openai) | Secret — never commit this |
+| `ANTHROPIC_API_KEY` | ✅ (if anthropic) | Secret — never commit this |
+| `JWT_SECRET_KEY` | ✅ | Random 256-bit string for production |
+| `CONFIDENCE_THRESHOLD` | ✅ | Float, e.g. `0.35` |
+
+### What the prod compose file does differently
+
+| Aspect | Dev (`docker-compose.yml`) | Prod (`docker-compose.prod.yml`) |
+|--------|---------------------------|----------------------------------|
+| Ollama service | Included (with model pull) | **Removed** |
+| `OLLAMA_BASE_URL` override | `http://ollama:11434` | **Removed** |
+| `LLM_PROVIDER` default | `ollama` | `openai` |
+| Redis | Included | Included (keep or swap for managed Redis) |
+
+### Notes
+
+- **LLM_PROVIDER** now defaults to `openai` in `app/config.py`, so a deploy
+  without an explicit env var won't silently try to reach `localhost:11434`.
+- The Ollama provider is still available for local development — just use the
+  dev `docker-compose.yml` and set `LLM_PROVIDER=ollama`.
+- Keep `redis` in the stack for caching. If you want a managed Redis instead,
+  remove the `redis` service and point `REDIS_URL` at your managed instance.
 
 ---
 

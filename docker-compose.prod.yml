@@ -1,0 +1,70 @@
+# ============================================================
+# HealthTech RAG Assistant – docker-compose (production/deploy)
+# ============================================================
+# This file is for cloud deployments (Render, Railway, etc.).
+# Do NOT use the dev docker-compose.yml in production.
+#
+# The following environment variables MUST be set via the host platform's
+# env vars or a real .env file — they have no sensible defaults:
+#   LLM_PROVIDER          — "openai" or "anthropic" (required)
+#   OPENAI_API_KEY        — required when LLM_PROVIDER=openai
+#   ANTHROPIC_API_KEY     — required when LLM_PROVIDER=anthropic
+#   JWT_SECRET_KEY        — random 256-bit string for production
+#   CONFIDENCE_THRESHOLD  — float, e.g. 0.35
+#
+# Services:
+#   api:      the FastAPI application
+#   redis:    caching layer (kept from dev compose)
+#
+# To run locally for production-like testing:
+#   LLM_PROVIDER=openai OPENAI_API_KEY=sk-... \
+#   JWT_SECRET_KEY=abc123 docker-compose -f docker-compose.prod.yml up --build
+# ============================================================
+
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: healthtech-rag-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_PERSIST_DIR=/app/chroma_db
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ./data:/app/data:ro
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: healthtech-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis_data:

@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     openai_chat_model: str = "gpt-4o-mini"
 
     # LLM Provider
-    llm_provider: Literal["openai", "anthropic", "ollama"] = "ollama"
+    llm_provider: Literal["openai", "anthropic", "ollama"] = "openai"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-3-5-sonnet-20241022"
 
