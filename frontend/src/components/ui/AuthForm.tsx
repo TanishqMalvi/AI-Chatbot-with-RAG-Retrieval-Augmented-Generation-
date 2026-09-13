@@ -1,53 +1,47 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { AuthContextProps, useAuth } from "../../hooks/useAuth";
+import { authApi } from "../../lib/api";
 import { clsx } from "clsx";
-import { useEffect } from "react";
 
-type NextProps = {
-  children: React.ReactNode;
-} & {
-  // Allow layout.tsx to optionally pass router
-} & any;
+type FormErrors = Record<string, string>;
 
 export const AuthForm = ({ onLogin }: { onLogin: () => void }) => {
-  const [formType, setFormType] = useState("login");
-  const [errors, setErrors] = useState({});
+  const [formType, setFormType] = useState<"login" | "signup">("login");
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
 
-  const toggleForm = () => setFormType(prev => prev === "login" ? "signup" : "login");
+  const toggleForm = () => setFormType((current) => current === "login" ? "signup" : "login");
 
-  // Reset errors on form change
   useEffect(() => {
     if (!isLoading) {
       setErrors({});
     }
   }, [isLoading]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
     if (isLoading) return;
 
     try {
-      const formData = new FormData(e.target as HTMLFormElement);
+      const formData = new FormData(event.currentTarget);
       const data = Object.fromEntries(formData);
+      const getValue = (key: string) => {
+        const value = data[key];
+        return typeof value === "string" ? value : "";
+      };
+      const userId = getValue(formType === "login" ? "userId" : "fullName").trim();
+      const role = getValue("role") || "user";
 
-      await login(
-        data.userId,
-        formType === "login" ? data.password : undefined,
-        data.role,
-        formType === "login"
-      );
-
+      await authApi.login(userId, [role]);
       onLogin();
-    } catch (err: any) {
-      setErrors(err.errors || {});
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Login failed.";
+      setErrors({ form: message });
     }
   };
 
@@ -65,11 +59,11 @@ export const AuthForm = ({ onLogin }: { onLogin: () => void }) => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg,#6366F1,#8B5CF6)', borderRadius: 12 }} />
+                <div style={{ width: 40, height: 40, background: "linear-gradient(135deg,#6366F1,#8B5CF6)", borderRadius: 12 }} />
               </motion.div>
             )}
             {formType === "signup" && (
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#00D4FF,#7C3AED)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg,#00D4FF,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 👤
               </div>
             )}
@@ -86,18 +80,16 @@ export const AuthForm = ({ onLogin }: { onLogin: () => void }) => {
               <motion.input
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                name={formType === "login" ? "userId" : "fullName"}
+                type="text"
                 className="flex-1 px-3 py-2.5 border border-slate-700/50 rounded-xl bg-slate-950/50 focus:ring-2 focus:ring-cyan-400/50 text-sm text-slate-100 transition-all duration-200"
                 placeholder={formType === "login" ? "Enter user ID" : "John Doe"}
-                value={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  // Handle controlled much later, using basic controlled approach
-                  return undefined as any;
-                }}
               />
             </div>
 
             {!formType.includes("login") ? (
               <div className="flex justify-between items-center">
-                <p className="text-xs text-slate-500">{formType === "login" ? "Don't have an account?" : "Already have an account?"}</a>
+                <p className="text-xs text-slate-500">{formType === "login" ? "Don't have an account?" : "Already have an account?"}</p>
               </div>
             ) : (
               <>
@@ -112,6 +104,7 @@ export const AuthForm = ({ onLogin }: { onLogin: () => void }) => {
             </label>
             <motion.div className="flex gap-2 justify-center mt-1">
               <motion.button
+                type="button"
                 key="doctor"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -124,6 +117,7 @@ export const AuthForm = ({ onLogin }: { onLogin: () => void }) => {
                 Doctor
               </motion.button>
               <motion.button
+                type="button"
                 key="patient"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -138,8 +132,8 @@ export const AuthForm = ({ onLogin }: { onLogin: () => void }) => {
             </motion.div>
           </div>
 
-          {errors.password && (
-            <p className="text-sm text-red-400 italic text-right">{errors.password}</p>
+          {errors.form && (
+            <p className="text-sm text-red-400 italic text-right">{errors.form}</p>
           )}
 
           <div style={{ textAlign: "right" }}>
@@ -166,6 +160,7 @@ export const AuthForm = ({ onLogin }: { onLogin: () => void }) => {
         {!formType.includes("login") && (
           <div className="mt-4 flex justify-between items-center text-sm text-slate-500">
             <button
+              type="button"
               onClick={() => router.push("/")}
               className="px-2 py-1 rounded-md bg-transparent hover:bg-opacity-10 transition-colors"
             >

@@ -30,6 +30,12 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    if (!authApi.isAuthenticated()) {
+      window.location.href = "/login";
+    }
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
@@ -50,17 +56,29 @@ export default function ChatPage() {
     setIsLoading(true);
     try {
       const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
-      const data: ChatResponse = await chatApi.sendMessage(query, history, "hyde");
+      const data: ChatResponse = await chatApi.sendMessage(query, history, "none");
       setMessages((p) => [...p, {
         id: (Date.now() + 1).toString(), role: "assistant",
         content: data.answer, sources: data.sources ?? [], timestamp: new Date(),
       }]);
-    } catch (err: unknown) {
-      setMessages((p) => [...p, {
-        id: (Date.now() + 1).toString(), role: "assistant",
-        content: `⚠️ Error: ${err instanceof Error ? err.message : "Something went wrong."}`,
-        timestamp: new Date(),
-      }]);
+    } catch (err: any) {
+      if (err?.response?.status === 401) {
+        authApi.logout();
+        setMessages((p) => [...p, {
+          id: (Date.now() + 1).toString(), role: "assistant",
+          content: "⚠️ Session expired or unauthorized. Please sign in again. Redirecting to login...",
+          timestamp: new Date(),
+        }]);
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1500);
+      } else {
+        setMessages((p) => [...p, {
+          id: (Date.now() + 1).toString(), role: "assistant",
+          content: `⚠️ Error: ${err instanceof Error ? err.message : "Something went wrong."}`,
+          timestamp: new Date(),
+        }]);
+      }
     } finally { setIsLoading(false); }
   };
 

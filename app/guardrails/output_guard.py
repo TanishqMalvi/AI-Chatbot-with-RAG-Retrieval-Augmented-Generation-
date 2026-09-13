@@ -62,13 +62,13 @@ def enforce_citations(answer: str, chunks: list[RetrievedChunk]) -> str:
 
 def compute_confidence(chunks: list[RetrievedChunk]) -> float:
     """
-    Estimate answer confidence from the top retrieved chunk scores.
+    Estimate answer confidence from the top retrieved relevance scores.
 
     Returns a float in [0, 1].
     """
     if not chunks:
         return 0.0
-    top_scores = [c.score for c in chunks[:3]]
+    top_scores = [max(0.0, min(1.0, c.score)) for c in chunks[:3]]
     return sum(top_scores) / len(top_scores)
 
 

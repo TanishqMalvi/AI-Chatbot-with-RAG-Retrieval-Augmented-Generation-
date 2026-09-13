@@ -36,7 +36,7 @@ export const authApi = {
 };
 
 export const chatApi = {
-  sendMessage: async (query: string, conversationHistory: Array<{role: string, content: string}> = [], strategy = 'hyde') => {
+  sendMessage: async (query: string, conversationHistory: Array<{role: string, content: string}> = [], strategy = 'none') => {
     const response = await apiClient.post('/api/v1/chat', {
       query,
       conversation_history: conversationHistory,

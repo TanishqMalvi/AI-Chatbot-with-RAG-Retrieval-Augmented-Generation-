@@ -29,6 +29,7 @@ class RetrievedChunk:
     chunk_text: str
     score: float
     metadata: dict[str, Any]
+    rerank_score: float | None = None
 
 
 def _build_acl_filter(user_roles: list[str]) -> dict[str, Any] | None:
@@ -51,7 +52,10 @@ def _get_cross_encoder():
     from sentence_transformers import CrossEncoder  # type: ignore
 
     logger.info("loading_reranker_model", model=settings.reranker_model)
-    return CrossEncoder(settings.reranker_model)
+    return CrossEncoder(
+        settings.reranker_model,
+        local_files_only=settings.reranker_local_files_only,
+    )
 
 
 def _docs_to_chunks(docs: list[Document], scores: list[float] | None = None) -> list[RetrievedChunk]:
@@ -140,7 +144,7 @@ def rerank(
         )
         reranked = []
         for chunk, score in ranked[:n]:
-            chunk.score = float(score)
+            chunk.rerank_score = float(score)
             reranked.append(chunk)
         return reranked
 

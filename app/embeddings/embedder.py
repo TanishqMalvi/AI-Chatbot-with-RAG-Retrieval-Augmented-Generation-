@@ -29,17 +29,28 @@ class EmbedderProtocol(Protocol):
 @lru_cache(maxsize=1)
 def get_embedder() -> EmbedderProtocol:
     """
-    Return a cached embedder instance using Ollama nomic-embed-text.
-    Requires Ollama to be running with nomic-embed-text pulled.
-    Run: docker exec healthtech-ollama ollama pull nomic-embed-text
+    Return a cached embedder instance.
+
+    - openai (default): Uses OpenAI text-embedding model. Requires OPENAI_API_KEY.
+    - ollama: Uses Ollama nomic-embed-text locally. Requires Ollama running.
+      Run: ollama pull nomic-embed-text
     """
-    from langchain_ollama import OllamaEmbeddings
+    provider = settings.llm_provider
 
-    ollama_url = settings.ollama_base_url
-    model = "nomic-embed-text"
+    if provider == "ollama":
+        from langchain_ollama import OllamaEmbeddings
 
-    logger.info("loading_embedder", provider="ollama", model=model, base_url=ollama_url)
-    return OllamaEmbeddings(
+        ollama_url = settings.ollama_base_url
+        model = "nomic-embed-text"
+        logger.info("loading_embedder", provider="ollama", model=model, base_url=ollama_url)
+        return OllamaEmbeddings(model=model, base_url=ollama_url)
+
+    # Default: OpenAI embeddings
+    from langchain_openai import OpenAIEmbeddings
+
+    model = settings.openai_embedding_model
+    logger.info("loading_embedder", provider="openai", model=model)
+    return OpenAIEmbeddings(
         model=model,
-        base_url=ollama_url,
+        openai_api_key=settings.openai_api_key,
     )

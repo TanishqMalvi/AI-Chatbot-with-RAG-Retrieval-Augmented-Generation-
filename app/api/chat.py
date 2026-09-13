@@ -45,7 +45,7 @@ class ChatRequest(BaseModel):
         description="Previous turns: [{'role': 'user'|'assistant', 'content': '...'}]",
     )
     query_rewrite_strategy: str = Field(
-        default="hyde",
+        default="none",
         description="Query rewriting strategy: none | hyde | multi_query | both",
     )
 

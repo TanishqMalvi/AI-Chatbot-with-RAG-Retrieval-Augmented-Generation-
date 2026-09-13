@@ -60,12 +60,13 @@ class Settings(BaseSettings):
     rerank_top_n: int = 4
     max_context_chunks: int = 4
     reranker_model: str = "BAAI/bge-reranker-large"
+    reranker_local_files_only: bool = True
 
     # Guardrails
     enable_pii_redaction: bool = True
     enable_prompt_injection_check: bool = True
     enable_hallucination_check: bool = True
-    confidence_threshold: float = 0.35
+    confidence_threshold: float = 0.2
 
     # LangSmith observability
     langchain_tracing_v2: bool = False
