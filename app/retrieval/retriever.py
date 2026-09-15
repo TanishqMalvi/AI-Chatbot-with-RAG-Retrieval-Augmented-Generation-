@@ -9,9 +9,12 @@ Blueprint Â§6-7:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
+
+from spellchecker import SpellChecker
 
 import structlog
 from langchain_core.documents import Document
@@ -21,6 +24,16 @@ from app.vectordb.client import get_vector_store
 
 logger = structlog.get_logger(__name__)
 settings = get_settings()
+
+_MIN_WORD_LENGTH = 3
+_spell_checker: SpellChecker | None = None
+
+
+def _get_spell_checker() -> SpellChecker:
+    global _spell_checker
+    if _spell_checker is None:
+        _spell_checker = SpellChecker()
+    return _spell_checker
 
 
 @dataclass
@@ -73,6 +86,55 @@ def _docs_to_chunks(docs: list[Document], scores: list[float] | None = None) -> 
     return result
 
 
+def normalize_query(query: str) -> tuple[str, list[tuple[str, str]]]:
+    """
+    Correct spelling errors in the query before embedding.
+
+    Uses pyspellchecker word-by-word. Only corrects words that:
+      - Are at least 3 characters long (avoid over-correcting short tokens)
+      - Are not in pyspellchecker's dictionary (likely misspellings)
+      - Have a confident single correction
+
+    Returns (normalized_query, list_of_corrections) where each correction
+    is (original_word, corrected_word).
+    """
+    spell = _get_spell_checker()
+    words = query.split()
+    corrections: list[tuple[str, str]] = []
+    corrected_words = []
+
+    for word in words:
+        if len(word) < _MIN_WORD_LENGTH:
+            corrected_words.append(word)
+            continue
+
+        stripped = re.sub(r"^[^a-zA-Z]+|[^a-zA-Z]+$", "", word)
+        if not stripped or stripped.isdigit():
+            corrected_words.append(word)
+            continue
+
+        if stripped.lower() not in spell and spell.correction(stripped) != stripped:
+            fixed = spell.correction(stripped)
+            if fixed and fixed != stripped:
+                corrected = word.replace(stripped, fixed)
+                corrections.append((stripped, fixed))
+                logger.info("query_spell_corrected", original=stripped, corrected=fixed)
+                corrected_words.append(corrected)
+                continue
+
+        corrected_words.append(word)
+
+    normalized = " ".join(corrected_words)
+    if normalized != query:
+        logger.info(
+            "query_normalized",
+            original=query,
+            normalized=normalized,
+            corrections=corrections,
+        )
+    return normalized, corrections
+
+
 def retrieve(
     query: str,
     user_roles: list[str],
@@ -83,6 +145,8 @@ def retrieve(
 
     Returns up to top_k chunks ordered by similarity score.
     """
+    query, corrections = normalize_query(query)
+
     k = top_k or settings.retrieval_top_k
     store = get_vector_store()
     acl_filter = _build_acl_filter(user_roles)
@@ -93,6 +157,7 @@ def retrieve(
         user_roles=user_roles,
         top_k=k,
         acl_filter=str(acl_filter)[:120],
+        corrections=corrections,
     )
 
     results: list[tuple[Document, float]] = store.similarity_search_with_relevance_scores(
@@ -112,6 +177,26 @@ def retrieve(
                 metadata=meta,
             )
         )
+
+    logger.info(
+        "retrieval_results",
+        query=query[:80],
+        num_chunks=len(chunks),
+        top_k=k,
+        chunks=[
+            {
+                "chunk_id": c.chunk_id,
+                "score": round(c.score, 4),
+                "text_preview": c.chunk_text[:120],
+                "metadata": {
+                    k2: v2
+                    for k2, v2 in c.metadata.items()
+                    if k2 not in ("text", "chunk_text")
+                },
+            }
+            for c in chunks[:k]
+        ],
+    )
 
     return chunks
 

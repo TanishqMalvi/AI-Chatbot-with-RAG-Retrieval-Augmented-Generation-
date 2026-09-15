@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authApi, chatApi } from "../../lib/api";
 import { Sidebar } from "../../components/ui/Sidebar";
+import { GlassCard } from "../../components/ui/GlassCard";
 import { MessageBubble } from "../../components/ui/MessageBubble";
 import { TypingIndicator } from "../../components/ui/TypingIndicator";
 
@@ -19,13 +20,15 @@ const SUGGESTIONS = [
   "What are the latest diabetes treatment protocols?",
   "Summarize hypertension guidelines",
   "Drug interaction for metformin",
-  "COVID-19 long-term effects research",
+  "Summarize the COVID-19 long-term effects overview",
 ];
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => { setUserId(authApi.getUserId()); }, []);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,7 +69,7 @@ export default function ChatPage() {
         authApi.logout();
         setMessages((p) => [...p, {
           id: (Date.now() + 1).toString(), role: "assistant",
-          content: "⚠️ Session expired or unauthorized. Please sign in again. Redirecting to login...",
+          content: "?? Session expired or unauthorized. Please sign in again. Redirecting to login...",
           timestamp: new Date(),
         }]);
         setTimeout(() => {
@@ -75,7 +78,7 @@ export default function ChatPage() {
       } else {
         setMessages((p) => [...p, {
           id: (Date.now() + 1).toString(), role: "assistant",
-          content: `⚠️ Error: ${err instanceof Error ? err.message : "Something went wrong."}`,
+          content: `?? Error: ${err instanceof Error ? err.message : "Something went wrong."}`,
           timestamp: new Date(),
         }]);
       }
@@ -144,7 +147,7 @@ export default function ChatPage() {
       <Sidebar onLogout={handleLogout} />
 
       {/* Main */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative", zIndex: 1 }}>
+      <GlassCard style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative", zIndex: 1 }}>
 
         {/* Header */}
         <motion.header
@@ -170,7 +173,7 @@ export default function ChatPage() {
                 background: "linear-gradient(135deg, #00D4FF, #7B61FF)",
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
               }}
-            >🧠</motion.div>
+            >??</motion.div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "var(--font-display)", background: "linear-gradient(135deg, #00D4FF, #7B61FF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                 HealthTech RAG
@@ -183,8 +186,8 @@ export default function ChatPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 999, background: "rgba(0,229,160,0.08)", border: "1px solid rgba(0,229,160,0.2)", fontSize: 12, color: "#00E5A0" }}>
               <span className="status-dot" /> Connected
             </div>
-            <div style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: "#94A3B8" }}>
-              👤 {authApi.getUserId()}
+<div style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: "#94A3B8" }}>
+              ?? {userId || "user"}
             </div>
             <button
               onClick={handleLogout}
@@ -195,7 +198,7 @@ export default function ChatPage() {
               }}
               onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,77,106,0.15)")}
               onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,77,106,0.08)")}
-            >↩ Logout</button>
+            >? Logout</button>
           </div>
         </motion.header>
 
@@ -217,12 +220,12 @@ export default function ChatPage() {
                     display: "flex", alignItems: "center", justifyContent: "center",
                     boxShadow: "0 8px 32px rgba(0,212,255,0.25)",
                   }}
-                >🏥</motion.div>
+                >??</motion.div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, background: "linear-gradient(135deg, #00D4FF, #7B61FF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                   Welcome!
                 </div>
                 <div style={{ fontSize: 14, color: "#64748B", maxWidth: 400, lineHeight: 1.7 }}>
-                  Ask anything about medical research, clinical guidelines, or drug interactions.
+                  Ask about clinical topics, treatment guidelines, or drug interactions.
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 8 }}>
                   {SUGGESTIONS.map((s, i) => (
@@ -234,11 +237,11 @@ export default function ChatPage() {
           </AnimatePresence>
 
           {messages.map((msg) => (
-            <MessageBubble
+<MessageBubble
               key={msg.id}
               type={msg.role}
               content={msg.content}
-              author={msg.role === "user" ? authApi.getUserId() : undefined}
+              author={msg.role === "user" ? (userId || "user") : undefined}
               timestamp={msg.timestamp}
               sources={msg.sources}
             />
@@ -249,7 +252,7 @@ export default function ChatPage() {
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               style={{ display: "flex", alignItems: "flex-start", gap: 10 }}
             >
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🧠</div>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>??</div>
               <div style={{ padding: "14px 18px", borderRadius: "6px 18px 18px 18px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}>
                 <TypingIndicator />
               </div>
@@ -295,15 +298,15 @@ export default function ChatPage() {
               disabled={isLoading || !input.trim()}
             >
               {isLoading
-                ? <span style={{ display: "inline-block", animation: "spin 0.8s linear infinite" }}>⏳</span>
-                : "→"}
+                ? <span style={{ display: "inline-block", animation: "spin 0.8s linear infinite" }}>?</span>
+                : "?"}
             </button>
           </div>
           <div style={{ textAlign: "center", fontSize: 11, color: "#334155", marginTop: 8 }}>
             Enter to send · Shift+Enter for new line · Powered by RAG + HyDE + llama3.2
           </div>
         </motion.div>
-      </div>
+      </GlassCard>
     </div>
   );
 }

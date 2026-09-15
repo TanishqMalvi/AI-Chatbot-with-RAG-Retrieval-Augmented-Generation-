@@ -1,11 +1,9 @@
 import React, { HTMLAttributes } from 'react';
 import { motion } from 'framer-motion';
 
-/**
- * Reusable glassmorphic panel.
- * Props are passed to the underlying div.
- */
-type GlassCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onAnimationStart' | 'onAnimationEnd' | 'onAnimationIteration' | 'onAnimationCancel'> & { children: React.ReactNode };
+type GlassCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onAnimationStart' | 'onAnimationEnd' | 'onAnimationIteration' | 'onAnimationCancel' | 'onDragStart' | 'onDragEnd' | 'onDrag' | 'onDragEnter' | 'onDragLeave' | 'onDragOver' | 'onDrop'> & { children: React.ReactNode };
+
+export const GlassCard: React.FC<GlassCardProps> = (props) => {
   const { className = '', children, ...rest } = props;
   return (
     <motion.div

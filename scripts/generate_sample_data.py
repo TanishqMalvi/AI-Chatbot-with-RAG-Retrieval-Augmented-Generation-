@@ -626,6 +626,98 @@ write_markdown("cold_flu_overview.md", cold_flu_content)
 # ---------------------------------------------------------------------------
 # 13. Extended medical topics
 # ---------------------------------------------------------------------------
+covid19_content = textwrap.dedent("""
+# COVID-19 Overview
+
+## Symptoms and Testing
+COVID-19 is caused by SARS-CoV-2 and can range from no symptoms to severe respiratory illness. Common symptoms include fever, cough, sore throat, nasal congestion, fatigue, headache, muscle aches, and loss of smell or taste; some people also have nausea, vomiting, or diarrhea. Use a rapid antigen or PCR test when infection is suspected, and follow current local public-health guidance.
+
+## Long-Term Effects
+Long COVID (post-COVID conditions) refers to new, returning, or ongoing symptoms lasting at least 3 months after infection. Symptoms may fluctuate and can include persistent fatigue, shortness of breath, cough, headaches, sleep problems, difficulty concentrating, dizziness, and digestive complaints. Symptoms can occur after mild or asymptomatic infection.
+
+## Current Management
+There is no single diagnostic test or treatment for Long COVID. Care focuses on a clinical evaluation, excluding other causes, validating symptoms, and addressing the most burdensome problems. Rehabilitation, pacing for post-exertional malaise, treatment of underlying conditions, and supportive services may help. Updated COVID-19 vaccination reduces the risk of severe illness and Long COVID. People at higher risk of severe acute COVID-19 should ask promptly about eligible antiviral treatment.
+
+## When to Seek Care
+Seek urgent care for trouble breathing, chest pain, confusion, bluish lips, severe dehydration, or worsening symptoms. Follow current isolation and prevention guidance from public-health authorities.
+""")
+write_markdown("covid19_overview.md", covid19_content)
+
+vaccination_schedule_content = textwrap.dedent("""
+# Vaccination Schedule Overview
+
+## How Schedules Are Used
+Vaccination recommendations depend on age, prior doses, pregnancy, health conditions, occupation, travel, and local guidance. Clinicians use the current CDC/ACIP child, adolescent, and adult schedules rather than relying on a single fixed list.
+
+## Pediatric Basics
+Infants commonly begin with hepatitis B at birth, followed by series such as DTaP, IPV, Hib, pneumococcal, rotavirus, and COVID-19 vaccines during early childhood. MMR, varicella, hepatitis A, and booster doses are given in toddler and preschool years. Influenza vaccination is recommended annually beginning at 6 months. Preteens commonly receive HPV and meningococcal ACWY vaccines, with a Tdap booster and additional meningococcal dosing as indicated.
+
+## Adult Basics
+Adults should receive an annual influenza vaccine and stay current with COVID-19 recommendations. A Tdap dose is followed by a tetanus/diphtheria booster every 10 years. Hepatitis B vaccination is recommended for adults through age 59 and for older adults with indications; MMR, varicella, and other vaccines depend on immunity and risk. Shingles vaccination is recommended beginning at age 50, pneumococcal vaccination at age 65 or earlier with risk factors, and RSV vaccination for eligible older adults. HPV vaccination is recommended through age 26 when not completed and may be considered through age 45 through shared decision-making.
+
+## Practical Notes
+Review the immunization record at every visit, use catch-up schedules when doses are missing, and check pregnancy, allergy, immune status, and other contraindications before vaccination.
+""")
+write_markdown("vaccination_schedule_overview.md", vaccination_schedule_content)
+
+pregnancy_prenatal_care_content = textwrap.dedent("""
+# Pregnancy and Prenatal Care Overview
+
+## Goals of Care
+Prenatal care supports the health of the pregnant person and fetus through risk assessment, preventive care, screening, education, and timely treatment. The first assessment should occur as early as possible, ideally before 10 weeks, and include medical and obstetric history, medications, family history, infections, immunizations, and social needs.
+
+## Checkup Schedule
+For an average-risk pregnancy, visits are commonly every 4 weeks through 28 weeks, every 2 weeks from 28 to 36 weeks, and weekly until delivery. The schedule is individualized for medical conditions, symptoms, fetal growth, or other risks; telehealth and home monitoring may supplement selected visits.
+
+## Routine Care and Screening
+Visits generally review blood pressure, weight, symptoms, fetal growth and heartbeat, urine findings, and test results. Care may include blood type and antibody screening, anemia and infection testing, genetic screening options, ultrasound assessment, gestational diabetes screening, and group B streptococcus testing later in pregnancy. Prenatal vitamins with folic acid, nutrition, physical activity, medication safety, and birth planning are reviewed.
+
+## Common Concerns
+Nausea, fatigue, heartburn, constipation, back pain, swelling, and sleep changes are common, but persistent or severe symptoms need assessment. Contact the care team urgently for vaginal bleeding, severe abdominal pain, severe headache or vision changes, fever, shortness of breath, fluid leakage, or decreased fetal movement.
+""")
+write_markdown("pregnancy_prenatal_care_overview.md", pregnancy_prenatal_care_content)
+
+cancer_screening_content = textwrap.dedent("""
+# Cancer Screening Overview
+
+## General Principles
+Screening is for people without cancer symptoms. Recommendations vary by sex assigned at birth, organs present, age, family history, genetic risk, prior results, and overall health. Confirm the appropriate plan with a clinician.
+
+## Breast Screening
+For people at average risk, the USPSTF recommends screening mammography every 2 years from ages 40 through 74. People with a strong family history, a known pathogenic variant such as BRCA1 or BRCA2, prior chest radiation, or other high-risk features may need earlier and additional screening, such as breast MRI.
+
+## Colorectal Screening
+Average-risk adults should begin colorectal cancer screening at age 45 and continue through 75. Options include annual high-sensitivity FIT, stool DNA-FIT at recommended intervals, CT colonography, flexible sigmoidoscopy, or colonoscopy every 10 years when results are normal. Screening from 76 to 85 is individualized based on health, prior screening, and preferences; routine screening generally stops after 85.
+
+## Cervical Screening
+Screen ages 21 to 29 with cervical cytology every 3 years. From ages 30 to 65, options include primary high-risk HPV testing every 5 years, cotesting every 5 years, or cytology every 3 years. Screening may stop after 65 after adequate normal prior screening and no high-risk history; people with certain immunocompromising conditions or prior high-grade lesions need a different plan.
+
+## Symptoms Still Need Evaluation
+Abnormal bleeding, a new lump, unexplained weight loss, blood in stool, or persistent pain requires diagnostic evaluation rather than routine screening.
+""")
+write_markdown("cancer_screening_overview.md", cancer_screening_content)
+
+migraine_headache_content = textwrap.dedent("""
+# Migraine and Headache Overview
+
+## Migraine vs Tension-Type Headache
+Migraine is usually moderate to severe, throbbing or pulsating, often one-sided, and worsened by activity. Nausea, light sensitivity, sound sensitivity, or aura may occur. Tension-type headache is typically mild to moderate, bilateral, and described as pressure or a tight band, without the prominent nausea or sensory sensitivity of migraine. A sudden "worst headache," neurologic deficit, fever, neck stiffness, head injury, or a new headache after age 50 needs urgent evaluation.
+
+## Common Triggers
+Triggers vary and may include stress or let-down after stress, irregular sleep, skipped meals, dehydration, alcohol, caffeine changes, hormonal changes, strong smells, bright light, weather changes, and certain foods. A headache diary can identify patterns; triggers are not always avoidable and should not lead to unnecessarily restrictive diets.
+
+## Management
+Regular sleep, meals, hydration, physical activity, and limiting acute medication overuse support control. Mild attacks may respond to acetaminophen or an NSAID when safe; migraine-specific medicines such as triptans may be appropriate for some people. Preventive treatment can be considered when headaches are frequent, prolonged, disabling, or acute medicines are ineffective or overused. Options include lifestyle and behavioral strategies and clinician-selected medicines such as beta-blockers, topiramate, amitriptyline, or CGRP-targeted therapy.
+
+## Follow-Up
+Seek clinical review for changing patterns, new neurologic symptoms, pregnancy, or headaches that interfere with daily life.
+""")
+write_markdown("migraine_headache_overview.md", migraine_headache_content)
+
+
+# ---------------------------------------------------------------------------
+# 14. Extended medical topics
+# ---------------------------------------------------------------------------
 copd_content = textwrap.dedent("""
 # COPD Overview
 
@@ -926,6 +1018,11 @@ total_chars = sum(
         emergency_content,
         medication_safety_content,
         cold_flu_content,
+        covid19_content,
+        vaccination_schedule_content,
+        pregnancy_prenatal_care_content,
+        cancer_screening_content,
+        migraine_headache_content,
         copd_content,
         ckd_content,
         stroke_content,

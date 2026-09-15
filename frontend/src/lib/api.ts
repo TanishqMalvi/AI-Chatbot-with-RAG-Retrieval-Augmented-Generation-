@@ -10,29 +10,35 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
 
 export const authApi = {
   login: async (userId: string, roles: string[]) => {
-    const response = await apiClient.post('/api/v1/token', { user_id: userId, roles });
-    localStorage.setItem('access_token', response.data.access_token);
-    localStorage.setItem('user_id', userId);
-    localStorage.setItem('user_roles', JSON.stringify(roles));
+    const response = await apiClient.post('/api/v1/token', { user_id: userId, roles }, { timeout: 10000 });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('access_token', response.data.access_token);
+      localStorage.setItem('user_id', userId);
+      localStorage.setItem('user_roles', JSON.stringify(roles));
+    }
     return response.data;
   },
   logout: () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('user_roles');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('user_roles');
+    }
   },
-  getUserId: () => localStorage.getItem('user_id'),
-  getRoles: () => JSON.parse(localStorage.getItem('user_roles') || '[]'),
-  isAuthenticated: () => !!localStorage.getItem('access_token'),
+  getUserId: () => (typeof window !== 'undefined' ? localStorage.getItem('user_id') : null),
+  getRoles: () => (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user_roles') || '[]') : []),
+  isAuthenticated: () => (typeof window !== 'undefined' ? !!localStorage.getItem('access_token') : false),
 };
 
 export const chatApi = {

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "../../lib/api";
+import { GlassCard } from "../../components/ui/GlassCard";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -189,7 +190,7 @@ export default function LoginPage() {
       `}</style>
 
       {/* Card */}
-      <div style={{
+      <GlassCard style={{
         width: "100%", maxWidth: 440,
         margin: "0 20px",
         background: "rgba(14,22,33,0.85)",
@@ -309,7 +310,7 @@ export default function LoginPage() {
             <span>ChromaDB</span>
           </div>
         </div>
-      </div>
+      </GlassCard>
     </div>
   );
 }
