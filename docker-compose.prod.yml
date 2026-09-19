@@ -1,25 +1,7 @@
-# ============================================================
-# HealthTech RAG Assistant – docker-compose (production/deploy)
-# ============================================================
-# This file is for cloud deployments (Render, Railway, etc.).
-# Do NOT use the dev docker-compose.yml in production.
-#
-# The following environment variables MUST be set via the host platform's
-# env vars or a real .env file — they have no sensible defaults:
-#   LLM_PROVIDER          — "openai" or "anthropic" (required)
-#   OPENAI_API_KEY        — required when LLM_PROVIDER=openai
-#   ANTHROPIC_API_KEY     — required when LLM_PROVIDER=anthropic
-#   JWT_SECRET_KEY        — random 256-bit string for production
-#   CONFIDENCE_THRESHOLD  — float, e.g. 0.35
-#
-# Services:
-#   api:      the FastAPI application
-#   redis:    caching layer (kept from dev compose)
-#
+# HealthTech RAG Assistant - docker-compose (production)
+# Use GROQ_API_KEY env var for LLM generation with Groq
 # To run locally for production-like testing:
-#   LLM_PROVIDER=openai OPENAI_API_KEY=sk-... \
-#   JWT_SECRET_KEY=abc123 docker-compose -f docker-compose.prod.yml up --build
-# ============================================================
+#   LLM_PROVIDER=groq GROQ_API_KEY=gs_... JWT_SECRET_KEY=abc123 docker-compose -f docker-compose.prod.yml up --build
 
 version: "3.9"
 
@@ -36,6 +18,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - CHROMA_PERSIST_DIR=/app/chroma_db
+      - GROQ_API_KEY=${GROQ_API_KEY}
     volumes:
       - ./chroma_db:/app/chroma_db
       - ./data:/app/data:ro

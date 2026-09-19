@@ -31,25 +31,29 @@ class Settings(BaseSettings):
     openai_chat_model: str = "gpt-4o-mini"
 
     # LLM Provider (chat generation only)
-    llm_provider: Literal["openai", "anthropic", "ollama", "gemini", "openrouter"] = "openai"
+    llm_provider: Literal["openai", "anthropic", "groq", "gemini", "openrouter"] = "openai"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-3-5-sonnet-20241022"
 
-    # Ollama (free, local)
+    # Groq (OpenAI-compatible, hosted)
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.1-8b-instant"
+
+    # Ollama (free, local - kept for embedding provider only)
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
 
-    # Google Gemini (free tier, no billing setup required)
+    # Google Gemini
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-flash"
     gemini_embedding_model: str = "models/text-embedding-004"
 
-    # OpenRouter (OpenAI-compatible, free models available)
+    # OpenRouter
     openrouter_api_key: str = ""
     openrouter_model: str = "openrouter/free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
-    # Embedding provider (separate from chat llm_provider — defaults to HuggingFace free tier)
+    # Embedding provider
     embedding_provider: Literal["openai", "ollama", "huggingface"] = "huggingface"
     huggingface_api_key: str = ""
     huggingface_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
@@ -65,10 +69,17 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
+    # Database
+    database_url: str = "sqlite:///./healthtech_rag.db"
+
     # JWT
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
+
+    # Admin seeding
+    admin_email: str = ""
+    admin_password: str = ""
 
     # Retrieval
     retrieval_top_k: int = 10
@@ -83,7 +94,7 @@ class Settings(BaseSettings):
     enable_hallucination_check: bool = True
     confidence_threshold: float = 0.2
 
-    # LangSmith observability
+    # LangSmith
     langchain_tracing_v2: bool = False
     langchain_api_key: str = ""
     langchain_project: str = "healthtech-rag"
@@ -92,15 +103,20 @@ class Settings(BaseSettings):
     ingest_batch_size: int = 32
     ingest_webhook_secret: str = "change-me-webhook-secret"
 
+    @field_validator("groq_api_key")
+    @classmethod
+    def warn_missing_groq_key(cls, v: str) -> str:
+        if not v:
+            import warnings
+            warnings.warn("GROQ_API_KEY is not set.", stacklevel=2)
+        return v
+
     @field_validator("openai_api_key")
     @classmethod
     def warn_missing_openai_key(cls, v: str) -> str:
         if not v:
             import warnings
-            warnings.warn(
-                "OPENAI_API_KEY is not set. Embedding and generation will fail.",
-                stacklevel=2,
-            )
+            warnings.warn("OPENAI_API_KEY is not set.", stacklevel=2)
         return v
 
 

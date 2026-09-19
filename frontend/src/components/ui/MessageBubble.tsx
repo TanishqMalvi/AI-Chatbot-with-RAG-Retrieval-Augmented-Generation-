@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 export type MessageBubbleProps = {
   type: 'user' | 'assistant';
@@ -33,7 +34,6 @@ export const MessageBubble = ({ type, content, author, timestamp, sources }: Mes
         alignItems: 'flex-start',
       }}
     >
-      {/* Avatar */}
       <div style={{
         width: 34, height: 34, borderRadius: 10, flexShrink: 0,
         background: isUser
@@ -46,7 +46,6 @@ export const MessageBubble = ({ type, content, author, timestamp, sources }: Mes
         {isUser ? '👤' : '🧠'}
       </div>
 
-      {/* Bubble */}
       <div style={{
         position: 'relative',
         padding: '12px 16px',
@@ -61,7 +60,6 @@ export const MessageBubble = ({ type, content, author, timestamp, sources }: Mes
           : '0 4px 20px rgba(0,0,0,0.3)',
         minWidth: 60,
       }}>
-        {/* Author + time */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           marginBottom: 6, fontSize: 11,
@@ -75,17 +73,18 @@ export const MessageBubble = ({ type, content, author, timestamp, sources }: Mes
           )}
         </div>
 
-        {/* Content */}
         <div style={{
           fontSize: 14, lineHeight: 1.65,
           color: isUser ? '#fff' : '#CBD5E1',
-          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
           fontFamily: isUser ? 'var(--font-body)' : 'var(--font-body)',
         }}>
-          {content}
+          {isUser ? (
+            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{content}</div>
+          ) : (
+            <MarkdownRenderer content={content} />
+          )}
         </div>
 
-        {/* Sources */}
         {sources && sources.length > 0 && (
           <div style={{
             marginTop: 10, paddingTop: 10,
@@ -112,7 +111,6 @@ export const MessageBubble = ({ type, content, author, timestamp, sources }: Mes
           </div>
         )}
 
-        {/* Copy button (AI only) */}
         {!isUser && (
           <button
             onClick={handleCopy}

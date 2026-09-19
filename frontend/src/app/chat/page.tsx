@@ -27,8 +27,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  useEffect(() => { setUserId(authApi.getUserId()); }, []);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  useEffect(() => { setUserEmail(authApi.getEmail()); }, []);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -57,32 +57,86 @@ export default function ChatPage() {
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     setIsLoading(true);
+
+    const assistantMsgId = (Date.now() + 1).toString();
+    const assistantMsg: Message = { id: assistantMsgId, role: "assistant", content: "", sources: [], timestamp: new Date() };
+    setMessages((p) => [...p, assistantMsg]);
+
     try {
       const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
-      const data: ChatResponse = await chatApi.sendMessage(query, history, "none");
-      setMessages((p) => [...p, {
-        id: (Date.now() + 1).toString(), role: "assistant",
-        content: data.answer, sources: data.sources ?? [], timestamp: new Date(),
-      }]);
+
+      let streamCompleted = false;
+
+      await chatApi.streamMessage(
+        query,
+        history,
+        "none",
+        (tokenContent) => {
+          setMessages((p) =>
+            p.map((m) =>
+              m.id === assistantMsgId
+                ? { ...m, content: m.content + tokenContent }
+                : m
+            )
+          );
+        },
+        (metadata) => {
+          setMessages((p) =>
+            p.map((m) =>
+              m.id === assistantMsgId
+                ? { ...m, sources: metadata.sources }
+                : m
+            )
+          );
+        },
+        (doneData) => {
+          setMessages((p) =>
+            p.map((m) =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    content: doneData.answer,
+                    sources: doneData.answer !== m.content ? [] : m.sources,
+                  }
+                : m
+            )
+          );
+          streamCompleted = true;
+          setIsLoading(false);
+        },
+        (errorMessage) => {
+          setMessages((p) => [
+            ...p,
+            {
+              id: (Date.now() + 2).toString(),
+              role: "assistant" as const,
+              content: `⚠️ Error: ${errorMessage}`,
+              timestamp: new Date(),
+            },
+          ]);
+          setIsLoading(false);
+        }
+      );
     } catch (err: any) {
-      if (err?.response?.status === 401) {
+      if (err?.response?.status === 401 || err?.message?.includes('unauthorized')) {
         authApi.logout();
         setMessages((p) => [...p, {
-          id: (Date.now() + 1).toString(), role: "assistant",
-          content: "?? Session expired or unauthorized. Please sign in again. Redirecting to login...",
+          id: (Date.now() + 2).toString(),
+          role: "assistant",
+          content: "⚠️ Session expired or unauthorized. Please sign in again. Redirecting to login...",
           timestamp: new Date(),
         }]);
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1500);
+        setTimeout(() => { window.location.href = "/login"; }, 1500);
       } else {
         setMessages((p) => [...p, {
-          id: (Date.now() + 1).toString(), role: "assistant",
-          content: `?? Error: ${err instanceof Error ? err.message : "Something went wrong."}`,
+          id: (Date.now() + 2).toString(),
+          role: "assistant",
+          content: `⚠️ Error: ${err instanceof Error ? err.message : "Something went wrong."}`,
           timestamp: new Date(),
         }]);
+        setIsLoading(false);
       }
-    } finally { setIsLoading(false); }
+    }
   };
 
   const handleLogout = () => { authApi.logout(); window.location.href = "/login"; };
@@ -187,7 +241,7 @@ export default function ChatPage() {
               <span className="status-dot" /> Connected
             </div>
 <div style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: "#94A3B8" }}>
-              ?? {userId || "user"}
+              👤 {userEmail || "user"}
             </div>
             <button
               onClick={handleLogout}
@@ -241,7 +295,7 @@ export default function ChatPage() {
               key={msg.id}
               type={msg.role}
               content={msg.content}
-              author={msg.role === "user" ? (userId || "user") : undefined}
+              author={msg.role === "user" ? (userEmail || "user") : undefined}
               timestamp={msg.timestamp}
               sources={msg.sources}
             />

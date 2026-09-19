@@ -9,13 +9,18 @@ import structlog
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from pydantic import BaseModel
+from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.database import get_db
+from app.models.user import User
 
 logger = structlog.get_logger(__name__)
 settings = get_settings()
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer()
 
 
@@ -32,11 +37,25 @@ class TokenPayload(BaseModel):
 
 class UserContext(BaseModel):
     user_id: str
+    email: str
     roles: list[str]
 
 
 # ---------------------------------------------------------------------------
-# Token creation (used by /token demo endpoint)
+# Password hashing
+# ---------------------------------------------------------------------------
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+# ---------------------------------------------------------------------------
+# Token creation
 # ---------------------------------------------------------------------------
 
 
@@ -57,12 +76,26 @@ def create_access_token(
 
 
 # ---------------------------------------------------------------------------
+# User lookup
+# ---------------------------------------------------------------------------
+
+
+def get_user_by_email(db: Session, email: str) -> User | None:
+    return db.query(User).filter(User.email == email).first()
+
+
+def get_user_by_id(db: Session, user_id: str) -> User | None:
+    return db.query(User).filter(User.id == user_id).first()
+
+
+# ---------------------------------------------------------------------------
 # Token validation dependency
 # ---------------------------------------------------------------------------
 
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
 ) -> UserContext:
     token = credentials.credentials
     try:
@@ -78,10 +111,37 @@ def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: missing subject",
             )
-        return UserContext(user_id=user_id, roles=roles)
+        # Load real user from database
+        user = get_user_by_id(db, user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+            )
+        return UserContext(user_id=user.id, email=user.email, roles=user.get_roles())
     except JWTError as exc:
         logger.warning("jwt_validation_failed", error=str(exc))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Auth schemas
+# ---------------------------------------------------------------------------
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"

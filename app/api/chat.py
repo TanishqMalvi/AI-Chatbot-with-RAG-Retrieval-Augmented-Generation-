@@ -9,11 +9,13 @@ Blueprint §15 (minimal flow order).
 
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
@@ -21,9 +23,16 @@ from app.audit.logger import audit_log
 from app.auth.jwt_handler import UserContext, get_current_user
 from app.config import get_settings
 from app.generation.llm import get_llm
-from app.generation.prompts import SYSTEM_PROMPT
+from app.generation.prompts import LOW_CONFIDENCE_RESPONSE, SYSTEM_PROMPT
 from app.guardrails.input_guard import sanitize_input
-from app.guardrails.output_guard import validate_output
+from app.guardrails.output_guard import (
+    compute_confidence,
+    enforce_citations,
+    has_citations,
+    is_low_confidence,
+    llm_hallucination_check,
+    validate_output,
+)
 from app.retrieval.query_rewriter import rewrite_query
 from app.retrieval.retriever import retrieve_and_rerank
 
@@ -229,4 +238,183 @@ async def chat(
         latency_ms=round(latency_ms, 1),
         request_id=request_id,
         guardrail_meta=guard_meta,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Streaming chat endpoint (SSE)
+# ---------------------------------------------------------------------------
+
+
+def _sse_event(event: str, payload: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+@router.post("/chat/stream")
+async def chat_stream(
+    body: ChatRequest,
+    request: Request,
+    user: UserContext = Depends(get_current_user),
+) -> StreamingResponse:
+    async def event_generator():
+        t0 = time.perf_counter()
+        request_id = getattr(request.state, "request_id", "unknown")
+
+        audit_log(
+            "chat_stream_request",
+            user_id=user.user_id,
+            details={"query_preview": body.query[:80], "roles": user.roles},
+            request_id=request_id,
+        )
+
+        clean_query, pii_types, is_injection = sanitize_input(body.query)
+
+        if is_injection:
+            audit_log(
+                "prompt_injection_blocked",
+                user_id=user.user_id,
+                details={"query_preview": body.query[:80]},
+                request_id=request_id,
+            )
+            yield _sse_event("error", {"detail": "Query contains potentially harmful content and cannot be processed."})
+            return
+
+        if pii_types:
+            logger.info("pii_redacted", types=pii_types, user=user.user_id)
+
+        try:
+            rewritten_queries = await rewrite_query(clean_query, strategy=body.query_rewrite_strategy)
+        except Exception as exc:
+            logger.warning("query_rewrite_failed", error=str(exc))
+            rewritten_queries = [clean_query]
+
+        primary_query = rewritten_queries[0]
+        chunks = retrieve_and_rerank(
+            query=primary_query,
+            user_roles=user.roles,
+            top_k=settings.retrieval_top_k,
+            top_n=settings.rerank_top_n,
+        )
+
+        context_parts = []
+        for i, chunk in enumerate(chunks[: settings.max_context_chunks], 1):
+            filename = chunk.metadata.get("filename", chunk.metadata.get("doc_id", "unknown"))
+            context_parts.append(f"[{i}] {filename}\n{chunk.chunk_text}")
+        context = "\n\n---\n\n".join(context_parts)
+
+        history_parts = []
+        for turn in body.conversation_history[-6:]:
+            role = turn.get("role", "user")
+            content = turn.get("content", "")
+            history_parts.append(f"{role.upper()}: {content}")
+        history = "\n".join(history_parts) if history_parts else "None"
+
+        system_content = SYSTEM_PROMPT.format(context=context, history=history)
+        messages = [
+            SystemMessage(content=system_content),
+            HumanMessage(content=clean_query),
+        ]
+
+        sources = [
+            SourceChunk(
+                doc_id=str(c.metadata.get("doc_id") or ""),
+                filename=str(c.metadata.get("filename") or c.metadata.get("doc_id") or ""),
+                section=str(c.metadata.get("section") or ""),
+                score=round(c.score, 4),
+            )
+            for c in chunks
+        ]
+
+        yield _sse_event("metadata", {"request_id": request_id, "sources": [s.model_dump() for s in sources]})
+
+        confidence = compute_confidence(chunks)
+        if is_low_confidence(chunks):
+            for token in LOW_CONFIDENCE_RESPONSE.split(" "):
+                yield _sse_event("token", {"content": token + " "})
+            guard_meta = {
+                "citations_present": False,
+                "confidence": round(confidence, 3),
+                "low_confidence": True,
+                "hallucinated": False,
+            }
+            latency_ms = (time.perf_counter() - t0) * 1000
+            yield _sse_event("done", {
+                "answer": LOW_CONFIDENCE_RESPONSE,
+                "confidence": guard_meta["confidence"],
+                "latency_ms": round(latency_ms, 1),
+                "request_id": request_id,
+                "guardrail_meta": guard_meta,
+            })
+            audit_log(
+                "chat_stream_response",
+                user_id=user.user_id,
+                details={"latency_ms": round(latency_ms, 1), "confidence": guard_meta["confidence"], "low_confidence": True},
+                request_id=request_id,
+            )
+            return
+
+        llm = get_llm()
+        raw_answer = ""
+        try:
+            async for chunk in llm.astream(messages):
+                delta = ""
+                if isinstance(chunk.content, str):
+                    delta = chunk.content
+                elif isinstance(chunk.content, list):
+                    for part in chunk.content:
+                        if isinstance(part, dict) and "text" in part:
+                            delta += part["text"]
+                        elif isinstance(part, str):
+                            delta += part
+                if delta:
+                    raw_answer += delta
+                    yield _sse_event("token", {"content": delta})
+        except Exception as exc:
+            logger.error("llm_stream_failed", error=str(exc))
+            yield _sse_event("error", {"detail": "Generation service temporarily unavailable."})
+            return
+
+        final_answer = enforce_citations(raw_answer, chunks)
+        hallucinated = await llm_hallucination_check(final_answer, chunks)
+        if hallucinated:
+            final_answer = LOW_CONFIDENCE_RESPONSE
+
+        guard_meta = {
+            "citations_present": has_citations(final_answer),
+            "confidence": round(confidence, 3),
+            "low_confidence": False,
+            "hallucinated": hallucinated,
+        }
+
+        latency_ms = (time.perf_counter() - t0) * 1000
+
+        yield _sse_event("done", {
+            "answer": final_answer,
+            "confidence": guard_meta["confidence"],
+            "latency_ms": round(latency_ms, 1),
+            "request_id": request_id,
+            "guardrail_meta": guard_meta,
+        })
+
+        audit_log(
+            "chat_stream_response",
+            user_id=user.user_id,
+            details={
+                "latency_ms": round(latency_ms, 1),
+                "num_chunks": len(chunks),
+                "confidence": guard_meta["confidence"],
+                "hallucinated": hallucinated,
+                "pii_redacted": bool(pii_types),
+            },
+            request_id=request_id,
+        )
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )

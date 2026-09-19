@@ -14,9 +14,9 @@ const conversations = [
 export const Sidebar = ({ onLogout }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [activeConv, setActiveConv] = useState(1);
-  const [userId, setUserId] = useState<string | null>(null);
-  useEffect(() => { setUserId(authApi.getUserId()); }, []);
-  const displayUserId = userId || "user";
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  useEffect(() => { setUserEmail(authApi.getEmail()); }, []);
+  const displayUserEmail = userEmail || "user";
 
   return (
     <>
@@ -113,7 +113,7 @@ export const Sidebar = ({ onLogout }: SidebarProps) => {
                 fontSize: 16, flexShrink: 0,
               }}>👤</div>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#F8FAFC", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayUserId}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#F8FAFC", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayUserEmail}</p>
                 <p style={{ fontSize: 11, color: "#64748B" }}>Healthcare Professional</p>
               </div>
             </motion.div>

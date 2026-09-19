@@ -5,10 +5,11 @@ import Link from "next/link";
 import { authApi } from "../../lib/api";
 import { GlassCard } from "../../components/ui/GlassCard";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
@@ -20,19 +21,27 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
-      setError("Please enter both email and password.");
+    if (!email.trim() || !password || !confirmPassword) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      await authApi.login(email.trim(), password);
-      router.replace("/chat");
+      await authApi.signup(email.trim(), password);
+      router.replace("/login?registered=true");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed. Is the backend running?");
+      setError(err instanceof Error ? err.message : "Signup failed. Is the backend running?");
     } finally {
       setLoading(false);
     }
@@ -198,10 +207,10 @@ export default function LoginPage() {
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
             backgroundClip: "text", marginBottom: 6, letterSpacing: "-0.03em",
           }}>HealthTech RAG</h1>
-          <p style={{ color: "#64748B", fontSize: 13 }}>AI-Powered Medical Assistant</p>
+          <p style={{ color: "#64748B", fontSize: 13 }}>Create your account</p>
         </div>
 
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Email */}
           <div>
             <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#94A3B8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -229,8 +238,24 @@ export default function LoginPage() {
               className="login-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="•••••••• (min 8 chars)"
+              autoComplete="new-password"
+            />
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#94A3B8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              className="login-input"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
-              autoComplete="current-password"
+              autoComplete="new-password"
             />
           </div>
 
@@ -252,15 +277,15 @@ export default function LoginPage() {
             {loading ? (
               <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <span style={{ display: "inline-block", animation: "spin 0.8s linear infinite" }}>⏳</span>
-                Signing in…
+                Creating account…
               </span>
-            ) : "Sign In →"}
+            ) : "Create Account →"}
           </button>
         </form>
 
-        {/* Signup link */}
+        {/* Login link */}
         <div style={{ marginTop: 24, textAlign: "center", fontSize: 13, color: "#94A3B8" }}>
-          Don't have an account? <Link href="/signup" style={{ color: "#00D4FF", textDecoration: "none", fontWeight: 500 }}>Sign up</Link>
+          Already have an account? <Link href="/login" style={{ color: "#00D4FF", textDecoration: "none", fontWeight: 500 }}>Sign in</Link>
         </div>
 
         {/* Footer stats */}

@@ -1,13 +1,5 @@
-# ============================================================
-# HealthTech RAG Assistant – docker-compose (development)
-# ============================================================
-# Usage:
-#   cp .env.example .env   # then fill in API keys
-#   docker-compose up --build
-#
-# Switch to Pinecone:
-#   VECTOR_DB=pinecone docker-compose up
-# ============================================================services:
+# HealthTech RAG Assistant - docker-compose (development)
+services:
   api:
     build:
       context: .
@@ -20,7 +12,7 @@
     environment:
       - REDIS_URL=redis://redis:6379/0
       - CHROMA_PERSIST_DIR=/app/chroma_db
-      - OLLAMA_BASE_URL=http://ollama:11434
+      - GROQ_API_KEY=${GROQ_API_KEY}
     volumes:
       - ./chroma_db:/app/chroma_db
       - ./data:/app/data:ro
@@ -28,8 +20,6 @@
     depends_on:
       redis:
         condition: service_healthy
-      ollama:
-        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -53,15 +43,5 @@
       retries: 5
     restart: unless-stopped
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: healthtech-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-
 volumes:
   redis_data:
-  ollama_data:

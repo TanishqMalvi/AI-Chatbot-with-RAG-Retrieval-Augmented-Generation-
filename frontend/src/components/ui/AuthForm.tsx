@@ -34,10 +34,19 @@ export const AuthForm = ({ onLogin }: { onLogin: () => void }) => {
         const value = data[key];
         return typeof value === "string" ? value : "";
       };
-      const userId = getValue(formType === "login" ? "userId" : "fullName").trim();
-      const role = getValue("role") || "user";
+      const email = getValue("email").trim();
+      const password = getValue("password");
 
-      await authApi.login(userId, [role]);
+      if (formType === "login") {
+        await authApi.login(email, password);
+      } else {
+        const confirmPassword = getValue("confirmPassword");
+        if (password !== confirmPassword) {
+          setErrors({ form: "Passwords do not match." });
+          return;
+        }
+        await authApi.signup(email, password);
+      }
       onLogin();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Login failed.";

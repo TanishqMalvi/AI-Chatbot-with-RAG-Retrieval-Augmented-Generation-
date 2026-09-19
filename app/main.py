@@ -13,10 +13,11 @@ import uuid
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
-from app.api import chat, health, ingest
+from app.api import auth, chat, health, ingest
 from app.config import get_settings
+from app.database import init_db
 
 logger = structlog.get_logger(__name__)
 settings = get_settings()
@@ -60,6 +61,10 @@ async def request_middleware(request: Request, call_next):
 
     response = await call_next(request)
 
+    if isinstance(response, StreamingResponse):
+        response.headers["X-Request-ID"] = request_id
+        return response
+
     elapsed_ms = (time.perf_counter() - start) * 1000
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Response-Time-Ms"] = f"{elapsed_ms:.1f}"
@@ -102,5 +107,60 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # Routers
 # ---------------------------------------------------------------------------
 app.include_router(health.router, tags=["Health"])
+app.include_router(auth.router, tags=["Auth"])
 app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 app.include_router(ingest.router, prefix="/api/v1", tags=["Ingestion"])
+
+
+# ---------------------------------------------------------------------------
+# Startup: Initialize database and seed admin user
+# ---------------------------------------------------------------------------
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    init_db()
+    await seed_admin_user()
+
+
+async def seed_admin_user() -> None:
+    """Create admin user from environment variables if no users exist."""
+    from app.auth.jwt_handler import get_user_by_email, hash_password
+    from app.config import get_settings
+    from app.database import SessionLocal
+    from app.models.user import User
+    from datetime import UTC, datetime
+    import uuid
+
+    settings = get_settings()
+    if not settings.admin_email or not settings.admin_password:
+        return
+
+    db = SessionLocal()
+    try:
+        # Check if any users exist
+        user_count = db.query(User).count()
+        if user_count > 0:
+            return
+
+        # Create admin user
+        email = settings.admin_email.lower().strip()
+        existing = get_user_by_email(db, email)
+        if existing:
+            return
+
+        user = User(
+            id=str(uuid.uuid4()),
+            email=email,
+            hashed_password=hash_password(settings.admin_password),
+            roles="admin,user",
+            created_at=datetime.now(UTC),
+        )
+        db.add(user)
+        db.commit()
+        logger.info("admin_user_seeded", email=email)
+    except Exception as exc:
+        logger.error("admin_seeding_failed", error=str(exc))
+        db.rollback()
+    finally:
+        db.close()
